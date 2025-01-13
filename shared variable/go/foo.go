@@ -1,41 +1,45 @@
-// Use `go run foo.go` to run your program
-
 package main
 
 import (
-	. "fmt"
+	"fmt"
 	"runtime"
-	"time"
 )
 
 var i = 0
 
-func incrementing() {
-	//TODO: increment i 1000000 times
+func incrementing(ch chan int, done chan bool) {
 	for j := 0; j < 1000000; j++ {
-		i++
+		val := <-ch
+		val++
+		ch <- val
 	}
-
+	done <- true
 }
 
-func decrementing() {
-	//TODO: decrement i 1000000 times
-	for j := 0; j < 999990; j++ {
-		i--
+func decrementing(ch chan int, done chan bool) {
+	for j := 0; j < 999999; j++ {
+		val := <-ch
+		val--
+		ch <- val
 	}
-
+	done <- true
 }
 
 func main() {
-	// What does GOMAXPROCS do? What happens if you set it to 1?
 	runtime.GOMAXPROCS(2)
 
-	// TODO: Spawn both functions as goroutines
-	go incrementing()
-	go decrementing()
+	ch := make(chan int, 1)
+	done := make(chan bool)
 
-	// We have no direct way to wait for the completion of a goroutine (without additional synchronization of some sort)
-	// We will do it properly with channels soon. For now: Sleep.
-	time.Sleep(500 * time.Millisecond)
-	Println("The magic number is:", i)
+	ch <- i
+
+	go incrementing(ch, done)
+	go decrementing(ch, done)
+
+	<-done
+	<-done
+
+	i := <-ch
+
+	fmt.Println("The magic number is:", i)
 }
